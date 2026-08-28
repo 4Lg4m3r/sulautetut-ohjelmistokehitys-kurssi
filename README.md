@@ -1,0 +1,2 @@
+# sulautetut-ohjelmistokehitys-kurssi
+Kurssitehtävät
