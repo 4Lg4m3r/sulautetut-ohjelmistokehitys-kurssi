@@ -1,2 +1,2 @@
-# sulautetut-ohjelmistokehitys-kurssi
+# Sulautettujen järjestelmien ohjelmistokehitys
 Kurssitehtävät
