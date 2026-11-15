@@ -1,6 +1,7 @@
-// Tavoittelen tehtävästä pistemäärää 3, sillä sain 3 pisteiden vaaditut tehtävät toimimaan,
-// eli tässä tehtävässä kohdat: Yksinkertaiset testit ja parseri sulautetussa ohjelmassa, Lisätään testikeissejä, sekä 
-// Lisää testausta liikennevaloihin
+// Tavoittelen tehtävästä pistemäärää 3, sillä toteutin GoogleTestillä yksikkötestit TimeParser-funktiolle. 
+// Testejä on 7, ja niillä testataan oikeanlaisten aikaarvojen käsittelyä ja virhetilanteita. 
+// Testit kattaa virheelliset aika-arvot, negatiiviset arvot, NULL-arvon, nolla-arvon, virheellisen merkkijonon pituuden sekä raja-arvot. 
+// Kaikki seitsemän testiä suoritettiin onnistuneesti. Testien avulla varmistetaan, että ajan jäsennys toimii odotetusti myös virheellisillä syötteillä.
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
@@ -105,6 +106,16 @@ K_THREAD_DEFINE(debug_thread,STACKSIZE,debug_task,NULL,NULL,NULL,PRIORITY,0,0);
 struct k_thread red_thread;
 struct k_thread green_thread;
 struct k_thread yellow_thread;
+
+// Timer and work initialization
+static void startup_timer_expiry(struct k_timer *timer);
+static void startup_work_handler(struct k_work *work);
+
+K_WORK_DEFINE(startup_work, startup_work_handler);
+
+K_TIMER_DEFINE(startup_timer,
+               startup_timer_expiry,
+               NULL);
 
 // Button 0 handler
 void button_0_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
@@ -342,6 +353,25 @@ int init_uart(void) {
 }
 
 
+// Timer expiry callback
+static void startup_timer_expiry(struct k_timer *timer)
+{
+    // Start LED operation through work queue
+    k_work_submit(&startup_work);
+}
+
+// Work handler
+static void startup_work_handler(struct k_work *work)
+{
+    // Start traffic lights with red LED
+    tila = 1;
+
+    gpio_pin_set_dt(&red, 1);
+    gpio_pin_set_dt(&green, 0);
+
+    printk("Traffic lights started by timer\n");
+}
+
 // Main program
 int main(void)
 {
@@ -376,8 +406,24 @@ int main(void)
 	k_msleep(100);
 
     // Init state
-    tila = 1;
-    suunta = 0;
+	tila = 0;
+	suunta = 0;
+
+	// Parse startup delay
+	char startup_time[] = "000001";
+	int delay = time_parse(startup_time);
+
+	if (delay < 0) {
+    	printk("Invalid startup time\n");
+    	return delay;
+	}
+
+	// Start timer
+	k_timer_start(&startup_timer,
+            K_SECONDS(delay),
+            K_NO_WAIT);
+
+	printk("Traffic light startup timer started\n");
 
 	//printk("System initialized\n");
 
@@ -394,15 +440,6 @@ int main(void)
 }
 
 
-int parser(char *command)
-{
-    if (command == NULL) {
-        return TIME_ARRAY_ERROR;
-    }
-
-    return time_parse(command);
-}
-
 // UART task
 static void uart_task(void *unused1, void *unused2, void *unused3)
 {
@@ -413,10 +450,6 @@ static void uart_task(void *unused1, void *unused2, void *unused3)
 	char uart_msg[50];
 	memset(uart_msg,0,sizeof(uart_msg));
 	int uart_msg_cnt = 0;
-
-	char time_string[] = "000005";
-	int time = time_parse(time_string);
-	printk("Parsed time: %d seconds\n", time);
 
 	while (true) {
 		// Ask UART if data available
@@ -631,8 +664,7 @@ static void dispatcher_task(void *unused1, void *unused2, void *unused3)
         }
 
 		char sequence[20];
-		memcpy(sequence,rec_item->msg,sizeof(sequence));
-        sequence[sizeof(sequence) - 1] = '\0';
+		snprintf(sequence, sizeof(sequence), "%s", rec_item->msg);
 
 		k_free(rec_item);
 
