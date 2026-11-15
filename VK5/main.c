@@ -1,6 +1,5 @@
-// Tavoittelen tehtävästä pistemäärää 3, sillä sain 3 pisteiden vaaditut tehtävät toimimaan,
-// eli tässä tehtävässä kohdat: aloituskohta, lisäsin lisää testausta timeriä varten
-// sekä sekvenssitestausta kirjaimille, kaikki toimii kuten pitää.
+// Tavoittelen tehtävästä pistemäärää 3, sillä sain tehtyä seuraavat: aloituskohta (1p), lisäsin lisää testausta timeriä varten (1p)
+// sekä sekvenssitestausta kirjaimille (1p), eli yht. 9 testiä ja kolme 1p  pisteen kohtaa, kaikki toimii hyvin. .
 
 
 #include <zephyr/kernel.h>
